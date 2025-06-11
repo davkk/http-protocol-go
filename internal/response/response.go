@@ -31,6 +31,7 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 	case INTERNAL_SERVER_ERROR:
 		segments = append(segments, INTERNAL_SERVER_ERROR.Code(), "Internal Server Error")
 	default:
+		segments = append(segments, statusCode.Code())
 	}
 
 	statusLine := strings.Join(segments, " ") + "\r\n"
