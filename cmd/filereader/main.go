@@ -31,7 +31,7 @@ func getLinesChannel(file io.ReadCloser) <-chan string {
 			str := string(data[:n])
 			parts := strings.Split(str, "\n")
 
-			for idx := 0; idx < len(parts)-1; idx++ {
+			for idx := range len(parts)-1 {
 				messages <- (line + parts[idx])
 				line = ""
 			}

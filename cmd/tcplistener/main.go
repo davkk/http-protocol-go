@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	"http-protocol/internal/request"
-	"http-protocol/pkg/assert"
 	"net"
 	"os"
+
+	"http-protocol/internal/request"
+	"http-protocol/pkg/assert"
 )
 
 func main() {
