@@ -1,11 +1,13 @@
 package response
 
 import (
+	"errors"
 	"fmt"
-	"http-protocol-go/internal/headers"
 	"io"
 	"strconv"
 	"strings"
+
+	"http-protocol-go/internal/headers"
 )
 
 type StatusCode int
@@ -20,7 +22,32 @@ const (
 	INTERNAL_SERVER_ERROR StatusCode = 500
 )
 
-func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
+type WriterState int
+
+const (
+	WriterStatusLine WriterState = iota
+	WriterHeaders
+	WriterBody
+)
+
+type Writer struct {
+	writer io.Writer
+	state  WriterState
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{
+		writer: w,
+		state:  WriterStatusLine,
+	}
+}
+
+func (w *Writer) WriteStatusLine(statusCode StatusCode) error {
+	if w.state != WriterStatusLine {
+		return errors.New("wrong state to write status line")
+	}
+	defer func() { w.state = WriterHeaders }()
+
 	segments := []string{"HTTP/1.1"}
 
 	switch statusCode {
@@ -36,7 +63,7 @@ func WriteStatusLine(w io.Writer, statusCode StatusCode) error {
 
 	statusLine := strings.Join(segments, " ") + "\r\n"
 
-	_, err := w.Write([]byte(statusLine))
+	_, err := w.writer.Write([]byte(statusLine))
 	return err
 }
 
@@ -48,10 +75,22 @@ func GetDefaultHeaders(contentLen int) headers.Headers {
 	}
 }
 
-func WriteHeaders(w io.Writer, h headers.Headers) error {
-	for key, value := range h {
-		w.Write(fmt.Appendf(nil, "%s: %s\r\n", key, value))
+func (w *Writer) WriteHeaders(h headers.Headers) error {
+	if w.state != WriterHeaders {
+		return errors.New("wrong state to write headers")
 	}
-	w.Write([]byte("\r\n"))
+	defer func() { w.state = WriterBody }()
+
+	for key, value := range h {
+		w.writer.Write(fmt.Appendf(nil, "%s: %s\r\n", key, value))
+	}
+	w.writer.Write([]byte("\r\n"))
 	return nil
+}
+
+func (w *Writer) WriteBody(p []byte) (int, error) {
+	if w.state != WriterBody {
+		return 0, errors.New("wrong state to write body")
+	}
+	return w.writer.Write(p)
 }

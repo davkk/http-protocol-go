@@ -1,35 +1,28 @@
 package main
 
 import (
-	"io"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"http-protocol-go/internal/request"
+	"http-protocol-go/internal/response"
 	"http-protocol-go/internal/server"
 )
 
 const port = 42069
 
 func main() {
-	server, err := server.Serve(port, func(w io.Writer, req *request.Request) *server.HandlerError {
+	server, err := server.Serve(port, func(w *response.Writer, req *request.Request) {
 		switch req.RequestLine.Target {
 		case "/yourproblem":
-			return &server.HandlerError{
-				StatusCode: 400,
-				Message:    "Your problem is not my problem\n",
-			}
+			response400(w)
 		case "/myproblem":
-			return &server.HandlerError{
-				StatusCode: 500,
-				Message:    "Woopsie, my bad\n",
-			}
+			response500(w)
 		default:
-			w.Write([]byte("All good, frfr\n"))
+			response200(w)
 		}
-		return nil
 	})
 
 	if err != nil {
@@ -42,4 +35,63 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
 	<-sigChan
 	log.Println("Server gracefully stopped")
+}
+
+func response400(w *response.Writer) {
+	w.WriteStatusLine(response.BAD_REQUEST)
+
+	body := `<html>
+	<head>
+		<title>400 Bad Request</title>
+	</head>
+	<body>
+		<h1>Bad Request</h1>
+		<p>Your request honestly kinda sucked.</p>
+	</body>
+</html>`
+
+	h := response.GetDefaultHeaders(len(body))
+	h.Set("Content-Type", "text/html")
+	w.WriteHeaders(h)
+
+	w.WriteBody([]byte(body))
+}
+
+func response500(w *response.Writer) {
+	w.WriteStatusLine(response.INTERNAL_SERVER_ERROR)
+	body := `<html>
+	<head>
+		<title>500 Internal Server Error</title>
+	</head>
+	<body>
+		<h1>Internal Server Error</h1>
+		<p>Okay, you know what? This one is on me.</p>
+	</body>
+</html>`
+
+	h := response.GetDefaultHeaders(len(body))
+	h.Set("Content-Type", "text/html")
+	w.WriteHeaders(h)
+
+	w.WriteBody([]byte(body))
+}
+
+func response200(w *response.Writer) {
+	w.WriteStatusLine(response.OK)
+
+	body := `<html>
+  <head>
+    <title>200 OK</title>
+  </head>
+  <body>
+    <h1>Success!</h1>
+    <p>Your request was an absolute banger.</p>
+  </body>
+</html>`
+
+	h := response.GetDefaultHeaders(len(body))
+	h.Set("Content-Type", "text/html")
+	w.WriteHeaders(h)
+
+	w.WriteBody([]byte(body))
 }

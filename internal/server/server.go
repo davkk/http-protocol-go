@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"sync/atomic"
@@ -22,7 +21,13 @@ func (he *HandlerError) Error() string {
 	return fmt.Sprintln(he.StatusCode, he.Message)
 }
 
-type Handler func(w io.Writer, req *request.Request) *HandlerError
+func (he *HandlerError) Write(w *response.Writer) {
+	w.WriteStatusLine(response.BAD_REQUEST)
+	w.WriteHeaders(response.GetDefaultHeaders(len(he.Message)))
+	w.WriteBody([]byte(he.Message))
+}
+
+type Handler func(w *response.Writer, req *request.Request)
 
 type Server struct {
 	listener net.Listener
@@ -67,28 +72,27 @@ func (s *Server) listen() {
 	}
 }
 
-// HTTP/1.1 200 OK
-// Content-Type: text/plain
-//
-// Hello World!
 func (s *Server) handle(conn net.Conn) {
 	defer conn.Close()
 
+	w := response.NewWriter(conn)
+
 	req, reqErr := request.RequestFromReader(conn)
 	if reqErr != nil {
+		err := &HandlerError{
+			StatusCode: int(response.BAD_REQUEST),
+			Message:    reqErr.Error(),
+		}
+		err.Write(w)
 		return
 	}
 
+	// body := bytes.NewBuffer([]byte{})
 	body := new(bytes.Buffer)
-	err := s.handler(body, req)
-	if err != nil {
-		response.WriteStatusLine(conn, response.BAD_REQUEST)
-		response.WriteHeaders(conn, response.GetDefaultHeaders(len(err.Message)))
-		conn.Write([]byte(err.Message))
-		return
-	}
 
-	response.WriteStatusLine(conn, response.OK)
-	response.WriteHeaders(conn, response.GetDefaultHeaders(len(body.Bytes())))
-	conn.Write(body.Bytes())
+	s.handler(w, req)
+
+	w.WriteStatusLine(response.OK)
+	w.WriteHeaders(response.GetDefaultHeaders(len(body.Bytes())))
+	w.WriteBody(body.Bytes())
 }
