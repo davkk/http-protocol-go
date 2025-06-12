@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"http-protocol/pkg/assert"
+	"http-protocol-go/pkg/assert"
 	"net"
 	"os"
 )

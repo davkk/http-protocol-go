@@ -2,7 +2,7 @@ package response
 
 import (
 	"fmt"
-	"http-protocol/internal/headers"
+	"http-protocol-go/internal/headers"
 	"io"
 	"strconv"
 	"strings"

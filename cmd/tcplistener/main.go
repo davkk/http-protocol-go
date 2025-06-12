@@ -5,8 +5,8 @@ import (
 	"net"
 	"os"
 
-	"http-protocol/internal/request"
-	"http-protocol/pkg/assert"
+	"http-protocol-go/internal/request"
+	"http-protocol-go/pkg/assert"
 )
 
 func main() {

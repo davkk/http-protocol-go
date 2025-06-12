@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"http-protocol/internal/headers"
+	"http-protocol-go/internal/headers"
 )
 
 const bufferSize = 8

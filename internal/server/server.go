@@ -9,8 +9,8 @@ import (
 	"net"
 	"sync/atomic"
 
-	"http-protocol/internal/request"
-	"http-protocol/internal/response"
+	"http-protocol-go/internal/request"
+	"http-protocol-go/internal/response"
 )
 
 type HandlerError struct {

@@ -7,8 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"http-protocol/internal/request"
-	"http-protocol/internal/server"
+	"http-protocol-go/internal/request"
+	"http-protocol-go/internal/server"
 )
 
 const port = 42069
