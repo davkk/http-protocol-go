@@ -94,3 +94,31 @@ func (w *Writer) WriteBody(p []byte) (int, error) {
 	}
 	return w.writer.Write(p)
 }
+
+func (w *Writer) WriteChunkedBody(p []byte) (int, error) {
+	if w.state != WriterBody {
+		return 0, errors.New("wrong state to write chunked body")
+	}
+
+	if _, err := fmt.Fprintf(w.writer, "%x\r\n", len(p)); err != nil {
+		return 0, err
+	}
+
+	n, err := w.writer.Write(p)
+	if err != nil {
+		return n, err
+	}
+
+	if _, err := w.writer.Write([]byte("\r\n")); err != nil {
+		return n, err
+	}
+
+	return n, nil
+}
+
+func (w *Writer) WriteChunkedBodyDone() (int, error) {
+	if w.state != WriterBody {
+		return 0, errors.New("wrong state to write chunked body done")
+	}
+	return fmt.Fprintf(w.writer, "0\r\n\r\n")
+}

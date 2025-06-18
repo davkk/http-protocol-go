@@ -1,9 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"http-protocol-go/internal/request"
@@ -15,6 +19,10 @@ const port = 42069
 
 func main() {
 	server, err := server.Serve(port, func(w *response.Writer, req *request.Request) {
+		if strings.HasPrefix(req.RequestLine.Target, "/httpbin") {
+			proxy(w, req)
+			return
+		}
 		switch req.RequestLine.Target {
 		case "/yourproblem":
 			response400(w)
@@ -94,4 +102,58 @@ func response200(w *response.Writer) {
 	w.WriteHeaders(h)
 
 	w.WriteBody([]byte(body))
+}
+
+func proxy(w *response.Writer, req *request.Request) {
+	route := strings.TrimPrefix(req.RequestLine.Target, "/httpbin")
+
+	url := fmt.Sprintf("http://httpbin.org%s", route)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("Error while proxying request: %v", err)
+		response500(w)
+		return
+	}
+	defer resp.Body.Close()
+
+	newHeaders := response.GetDefaultHeaders(0)
+	for key, values := range resp.Header {
+		for _, value := range values {
+			newHeaders.Set(key, value)
+		}
+	}
+
+	delete(newHeaders, "content-length")
+	newHeaders.Set("Transfer-Encoding", "chunked")
+
+	w.WriteStatusLine(response.OK)
+	w.WriteHeaders(newHeaders)
+
+	body := make([]byte, 0)
+	buf := make([]byte, 1024)
+
+	for {
+		n, err := resp.Body.Read(buf)
+		if err != nil && err != io.EOF {
+			response500(w)
+			break
+		}
+
+		if n == 0 {
+			break
+		}
+
+		if _, err = w.WriteChunkedBody(buf[:n]); err != nil {
+			response500(w)
+			break
+		}
+
+		body = append(body, buf[:n]...)
+	}
+
+	_, err = w.WriteChunkedBodyDone()
+	if err != nil {
+		response500(w)
+		return
+	}
 }
