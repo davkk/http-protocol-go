@@ -25,6 +25,8 @@ func main() {
 			return
 		}
 		switch req.RequestLine.Target {
+		case "/video":
+			responseVideo(w)
 		case "/yourproblem":
 			response400(w)
 		case "/myproblem":
