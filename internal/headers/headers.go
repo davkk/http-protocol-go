@@ -67,3 +67,8 @@ func (h Headers) Set(key string, value string) {
 	key = strings.ToLower(key)
 	h[key] = value
 }
+
+func (h Headers) Del(key string) {
+	key = strings.ToLower(key)
+	delete(h, key)
+}

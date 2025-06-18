@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"log"
@@ -123,7 +124,7 @@ func proxy(w *response.Writer, req *request.Request) {
 		}
 	}
 
-	delete(newHeaders, "content-length")
+	newHeaders.Del("Content-Length")
 	newHeaders.Set("Transfer-Encoding", "chunked")
 
 	w.WriteStatusLine(response.OK)
@@ -156,4 +157,30 @@ func proxy(w *response.Writer, req *request.Request) {
 		response500(w)
 		return
 	}
+
+	trailers := response.GetDefaultHeaders(0)
+	trailers.Del("Content-Length")
+	trailers.Set("X-Content-SHA256", fmt.Sprintf("%x", sha256.Sum256(body)))
+	trailers.Set("X-Content-Length", fmt.Sprint(len(body)))
+
+	err = w.WriteTrailers(trailers)
+	if err != nil {
+		response500(w)
+		return
+	}
+}
+
+func responseVideo(w *response.Writer) {
+	w.WriteStatusLine(response.OK)
+	data, err := os.ReadFile("./assets/vim.mp4")
+	if err != nil {
+		response500(w)
+		return
+	}
+
+	h := response.GetDefaultHeaders(len(data))
+	h.Set("Content-Type", "video/mp4")
+	w.WriteHeaders(h)
+
+	w.WriteBody(data)
 }
